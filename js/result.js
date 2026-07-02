@@ -213,6 +213,20 @@
         </div>
       </div>
 
+      <!-- AI EXPLANATION -->
+      ${data.ai_explanation ? `
+      <div class="ai-card">
+        <div class="ai-icon">
+          <svg viewBox="0 0 18 18" fill="none" stroke="var(--violet)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M9 2v2M9 14v2M2 9h2M14 9h2M4.2 4.2l1.4 1.4M12.4 12.4l1.4 1.4M13.8 4.2l-1.4 1.4M5.6 12.4l-1.4 1.4"/>
+            <circle cx="9" cy="9" r="3"/>
+          </svg>
+        </div>
+        <div class="ai-label">AI Explanation</div>
+        <div class="ai-text">${UI.formatValue(data.ai_explanation)}</div>
+      </div>
+      ` : ""}
+
       <!-- CHECKS GRID -->
       <div class="section-head">
         <div class="section-head-title">Security Checks</div>
@@ -492,6 +506,51 @@
         font-family:var(--font-mono); font-size:11px; color:var(--muted,#5A6478);
       }
       .meta-chip strong { color:var(--mint); }
+
+      /* ── AI EXPLANATION ──────────────────────── */
+      .ai-card {
+        background: linear-gradient(135deg, rgba(123,97,255,0.08), rgba(15,255,193,0.04));
+        border: 1px solid rgba(123,97,255,0.2);
+        border-radius: var(--radius-lg, 18px);
+        padding: 28px 32px;
+        margin-bottom: 24px;
+        position: relative;
+        overflow: hidden;
+      }
+      .ai-card::before {
+        content: 'AI';
+        position: absolute;
+        right: 24px; top: 20px;
+        font-family: var(--font-mono);
+        font-size: 10px;
+        color: var(--violet, #7B61FF);
+        border: 1px solid rgba(123,97,255,0.3);
+        padding: 2px 8px;
+        border-radius: 100px;
+        letter-spacing: 1px;
+      }
+      .ai-icon {
+        width: 36px; height: 36px;
+        border-radius: 8px;
+        background: rgba(123,97,255,0.10);
+        border: 1px solid rgba(123,97,255,0.2);
+        display: flex; align-items: center; justify-content: center;
+        margin-bottom: 14px;
+      }
+      .ai-icon svg { width: 18px; height: 18px; }
+      .ai-label {
+        font-family: var(--font-mono);
+        font-size: 10px;
+        color: var(--violet, #7B61FF);
+        letter-spacing: 1.5px;
+        text-transform: uppercase;
+        margin-bottom: 8px;
+      }
+      .ai-text {
+        font-size: 14px;
+        color: var(--text, #C8D0E0);
+        line-height: 1.75;
+      }
 
       /* ── AMBIENT ─────────────────────────────── */
       .ambient { position:fixed; inset:0; pointer-events:none; z-index:0; }
