@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Decoding… — LinkDecoder AI</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    /* ── TOKENS ─────────────────────────────── */
+    :root {
+      --bg:        #090C10;
+      --surface:   #111827;
+      --surface-2: #1A2035;
+      --border:    rgba(255,255,255,0.07);
+      --mint:      #0FFFC1;
+      --mint-dim:  rgba(15,255,193,0.10);
+      --violet:    #7B61FF;
+      --warning:   #F5A623;
+      --danger:    #FF4C6A;
+      --text:      #C8D0E0;
+      --muted:     #5A6478;
+      --font-display: 'Space Grotesk', sans-serif;
+      --font-body:    'Inter', sans-serif;
+      --font-mono:    'JetBrains Mono', monospace;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font-body);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      padding: 24px;
+    }
+
+    /* ── AMBIENT GLOW ────────────────────────── */
+    .ambient {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 0;
+      background:
+        radial-gradient(ellipse 60% 50% at 50% 0%,   rgba(123,97,255,0.10) 0%, transparent 70%),
+        radial-gradient(ellipse 40% 30% at 50% 100%, rgba(15,255,193,0.06) 0%, transparent 60%);
+    }
+
+    /* ── GRID LINES ──────────────────────────── */
+    .grid-lines {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 0;
+      background-image:
+        linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.025) 1px, transparent 1px);
+      background-size: 48px 48px;
+    }
+
+    /* ── MAIN CARD ───────────────────────────── */
+    .decode-card {
+      position: relative;
+      z-index: 1;
+      width: 100%;
+      max-width: 560px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 40px 36px;
+      box-shadow: 0 24px 80px rgba(0,0,0,0.5);
+    }
+
+    /* ── HEADER ──────────────────────────────── */
+    .card-header {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 28px;
+      padding-bottom: 24px;
+      border-bottom: 1px solid var(--border);
+    }
+    .spinner-ring {
+      width: 40px;
+      height: 40px;
+      flex-shrink: 0;
+      position: relative;
+    }
+    .spinner-ring svg {
+      width: 40px;
+      height: 40px;
+      animation: spin 1.4s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .header-text { flex: 1; min-width: 0; }
+    .header-title {
+      font-family: var(--font-display);
+      font-size: 16px;
+      font-weight: 600;
+      color: #fff;
+      margin-bottom: 4px;
+    }
+    .header-url {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--muted);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    /* ── PROGRESS BAR ────────────────────────── */
+    .progress-wrap {
+      margin-bottom: 28px;
+    }
+    .progress-labels {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 8px;
+    }
+    .progress-label {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--muted);
+    }
+    .progress-pct {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--mint);
+    }
+    .progress-track {
+      height: 4px;
+      background: var(--surface-2);
+      border-radius: 100px;
+      overflow: hidden;
+    }
+    .progress-fill {
+      height: 100%;
+      border-radius: 100px;
+      background: linear-gradient(90deg, var(--violet), var(--mint));
+      width: 0%;
+      transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+      position: relative;
+    }
+    /* Shimmer on the fill bar */
+    .progress-fill::after {
+      content: '';
+      position: absolute;
+      top: 0; right: 0; bottom: 0;
+      width: 40px;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+      animation: shimmer 1.2s ease-in-out infinite;
+    }
+    @keyframes shimmer {
+      0%   { opacity: 0; transform: translateX(-20px); }
+      50%  { opacity: 1; }
+      100% { opacity: 0; transform: translateX(10px); }
+    }
+
+    /* ── STEP LIST ───────────────────────────── */
+    .steps-list {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .step {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 10px 12px;
+      border-radius: 10px;
+      transition: background 0.2s;
+    }
+    .step.active {
+      background: rgba(15,255,193,0.06);
+    }
+
+    /* Step icon */
+    .step-icon {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      border: 1px solid var(--border);
+      background: var(--surface-2);
+      transition: background 0.3s, border-color 0.3s;
+    }
+    .step.active .step-icon {
+      background: var(--mint-dim);
+      border-color: rgba(15,255,193,0.3);
+    }
+    .step.done .step-icon {
+      background: rgba(15,255,193,0.15);
+      border-color: rgba(15,255,193,0.4);
+    }
+    .step-icon svg { width: 13px; height: 13px; }
+
+    /* Step icon states */
+    .icon-idle   { display: block; }
+    .icon-spin   { display: none; }
+    .icon-check  { display: none; }
+
+    .step.active .icon-idle  { display: none; }
+    .step.active .icon-spin  { display: block; animation: spin 0.8s linear infinite; }
+    .step.active .icon-check { display: none; }
+
+    .step.done .icon-idle  { display: none; }
+    .step.done .icon-spin  { display: none; }
+    .step.done .icon-check { display: block; }
+
+    /* Step connector line */
+    .step-connector {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 2px 0;
+    }
+    .connector-line {
+      width: 1px;
+      height: 8px;
+      background: var(--border);
+      margin: 0 auto;
+      transition: background 0.3s;
+    }
+    .step.done + .step-connector .connector-line,
+    .step.active + .step-connector .connector-line {
+      background: rgba(15,255,193,0.25);
+    }
+
+    /* Step text */
+    .step-text { flex: 1; }
+    .step-name {
+      font-family: var(--font-body);
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--muted);
+      transition: color 0.2s;
+    }
+    .step.active .step-name { color: #fff; }
+    .step.done   .step-name { color: var(--text); }
+    .step-detail {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      color: var(--muted);
+      margin-top: 2px;
+      min-height: 14px;
+      opacity: 0;
+      transform: translateY(4px);
+      transition: opacity 0.3s, transform 0.3s;
+    }
+    .step.active .step-detail {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    /* Step status badge */
+    .step-badge {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      padding: 2px 8px;
+      border-radius: 100px;
+      opacity: 0;
+      transition: opacity 0.3s;
+      white-space: nowrap;
+    }
+    .step.done .step-badge {
+      opacity: 1;
+      background: rgba(15,255,193,0.1);
+      color: var(--mint);
+    }
+
+    /* ── FOOTER LOG ──────────────────────────── */
+    .terminal-log {
+      margin-top: 24px;
+      padding-top: 20px;
+      border-top: 1px solid var(--border);
+      min-height: 42px;
+    }
+    .log-line {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--muted);
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      animation: fade-in 0.3s ease;
+    }
+    @keyframes fade-in {
+      from { opacity: 0; transform: translateY(4px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .log-prompt { color: var(--mint); flex-shrink: 0; }
+    .log-text { word-break: break-all; }
+
+    /* ── RESPONSIVE ──────────────────────────── */
+    @media (max-width: 480px) {
+      .decode-card { padding: 28px 20px; }
+      .card-header { gap: 10px; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="ambient"></div>
+  <div class="grid-lines"></div>
+
+  <div class="decode-card">
+
+    <!-- HEADER -->
+    <div class="card-header">
+      <div class="spinner-ring">
+        <svg viewBox="0 0 40 40" fill="none">
+          <!-- Track -->
+          <circle cx="20" cy="20" r="16" stroke="rgba(255,255,255,0.06)" stroke-width="3"/>
+          <!-- Active arc -->
+          <circle cx="20" cy="20" r="16"
+            stroke="url(#ring-grad)"
+            stroke-width="3"
+            stroke-linecap="round"
+            stroke-dasharray="55 45"
+            transform="rotate(-90 20 20)"
+          />
+          <defs>
+            <linearGradient id="ring-grad" x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0%"   stop-color="#7B61FF"/>
+              <stop offset="100%" stop-color="#0FFFC1"/>
+            </linearGradient>
+          </defs>
+        </svg>
+      </div>
+      <div class="header-text">
+        <div class="header-title">Analyzing URL…</div>
+        <div class="header-url" id="display-url">—</div>
+      </div>
+    </div>
+
+    <!-- PROGRESS BAR -->
+    <div class="progress-wrap">
+      <div class="progress-labels">
+        <span class="progress-label">Scan Progress</span>
+        <span class="progress-pct" id="pct-label">0%</span>
+      </div>
+      <div class="progress-track">
+        <div class="progress-fill" id="progress-fill"></div>
+      </div>
+    </div>
+
+    <!-- STEPS -->
+    <div class="steps-list" id="steps-list">
+      <!-- injected by JS -->
+    </div>
+
+    <!-- TERMINAL LOG -->
+    <div class="terminal-log">
+      <div class="log-line" id="log-line">
+        <span class="log-prompt">›</span>
+        <span class="log-text" id="log-text">Initializing scanner…</span>
+      </div>
+    </div>
+
+  </div>
+
+  <script src="js/config.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/decoder.js"></script>
+  
+  <script>
+  // ── STEP DEFINITIONS ─────────────────────────────────────
+  const STEPS = [
+    {
+      id:     "receive",
+      name:   "Receiving URL",
+      detail: "parsing input…",
+      log:    "Received URL from client",
+      ms:     420,
+    },
+    {
+      id:     "redirects",
+      name:   "Following Redirects",
+      detail: "tracing redirect chain…",
+      log:    "Following HTTP redirects (301/302/meta)…",
+      ms:     900,
+    },
+    {
+      id:     "punycode",
+      name:   "Decoding Punycode",
+      detail: "checking for homoglyphs…",
+      log:    "Decoding internationalized domain name…",
+      ms:     550,
+    },
+    {
+      id:     "ssl",
+      name:   "Checking SSL",
+      detail: "validating certificate chain…",
+      log:    "Verifying TLS certificate validity…",
+      ms:     700,
+    },
+    {
+      id:     "domain_age",
+      name:   "Checking Domain Age",
+      detail: "querying WHOIS records…",
+      log:    "Querying domain registration date via WHOIS…",
+      ms:     800,
+    },
+    {
+      id:     "brand",
+      name:   "Detecting Brand Impersonation",
+      detail: "comparing against known brands…",
+      log:    "Running brand similarity analysis…",
+      ms:     650,
+    },
+    {
+      id:     "risk",
+      name:   "Calculating Risk Score",
+      detail: "weighing all signals…",
+      log:    "Computing weighted risk score from all checks…",
+      ms:     500,
+    },
+    {
+      id:     "ai",
+      name:   "Generating AI Explanation",
+      detail: "asking the model…",
+      log:    "Requesting natural-language summary from AI…",
+      ms:     900,
+    },
+  ];
+
+  // ── BUILD STEP DOM ────────────────────────────────────────
+  function buildSteps() {
+    const list = document.getElementById("steps-list");
+    list.innerHTML = "";
+
+    STEPS.forEach((step, i) => {
+      // Connector line between steps (not before first)
+      if (i > 0) {
+        const conn = document.createElement("div");
+        conn.className = "step-connector";
+        conn.innerHTML = `<div class="connector-line"></div>`;
+        list.appendChild(conn);
+      }
+
+      const el = document.createElement("div");
+      el.className = "step";
+      el.id = `step-${step.id}`;
+      el.innerHTML = `
+        <div class="step-icon">
+          <!-- idle dot -->
+          <svg class="icon-idle" viewBox="0 0 13 13" fill="none">
+            <circle cx="6.5" cy="6.5" r="2.5" fill="var(--muted)"/>
+          </svg>
+          <!-- spinning arc -->
+          <svg class="icon-spin" viewBox="0 0 13 13" fill="none">
+            <circle cx="6.5" cy="6.5" r="4.5" stroke="rgba(15,255,193,0.2)" stroke-width="2"/>
+            <path d="M6.5 2A4.5 4.5 0 0 1 11 6.5" stroke="var(--mint)" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+          <!-- checkmark -->
+          <svg class="icon-check" viewBox="0 0 13 13" fill="none">
+            <path d="M2.5 6.5L5.5 9.5L10.5 4" stroke="var(--mint)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+        <div class="step-text">
+          <div class="step-name">${step.name}</div>
+          <div class="step-detail">${step.detail}</div>
+        </div>
+        <div class="step-badge">done</div>
+      `;
+      list.appendChild(el);
+    });
+  }
+
+  // ── ANIMATE STEPS ─────────────────────────────────────────
+  function setLog(text) {
+    const logText = document.getElementById("log-text");
+    const logLine = document.getElementById("log-line");
+    logText.textContent = text;
+    // Reset animation
+    logLine.style.animation = "none";
+    logLine.offsetHeight; // reflow
+    logLine.style.animation = "";
+  }
+
+  function setProgress(pct) {
+    document.getElementById("progress-fill").style.width = pct + "%";
+    document.getElementById("pct-label").textContent = Math.round(pct) + "%";
+  }
+
+  async function animateSteps() {
+    buildSteps();
+
+    // Show the URL
+    const url = UI.getURL();
+    document.getElementById("display-url").textContent = UI.truncateURL(url, 55);
+
+    const total = STEPS.length;
+
+    for (let i = 0; i < total; i++) {
+      const step = STEPS[i];
+      const el   = document.getElementById(`step-${step.id}`);
+
+      // Mark active
+      el.classList.add("active");
+      setLog(step.log);
+      setProgress(((i) / total) * 100);
+
+      // Scroll into view on mobile
+      el.scrollIntoView({ block: "nearest", behavior: "smooth" });
+
+      await wait(step.ms);
+
+      // Mark done
+      el.classList.remove("active");
+      el.classList.add("done");
+      setProgress(((i + 1) / total) * 100);
+    }
+
+    setLog("Scan complete. Rendering results…");
+    setProgress(100);
+
+    // Trigger the actual API call (decoder.js)
+    // This was already started in parallel — now we just wait for it.
+    // If it finished already, redirect immediately.
+  }
+
+  function wait(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+  }
+
+  // ── BOOT ──────────────────────────────────────────────────
+  (async function boot() {
+    // Guard: if no URL, send back
+    if (!UI.getURL()) {
+      window.location.href = "index.html";
+      return;
+    }
+
+    // Start API call and animation in parallel
+    const apiPromise      = Decoder.runDecode();
+    const animatePromise  = animateSteps();
+
+    // Wait for BOTH — whichever takes longer wins
+    await Promise.all([apiPromise, animatePromise]);
+
+    // Both done — navigate to results
+    window.location.href = "result.html";
+  })();
+  </script>
+
+</body>
+</html>
